@@ -1,65 +1,50 @@
-# Chrome Extension: AZ Problem Tracker
+# AI Chat Bot Assistance for maang.in - Chrome Extension
 
-## Introduction  
-**AZ Problem Tracker** is a Chrome extension that helps students bookmark and manage problems on the [maang.in](https://maang.in) website. This project is part of a hands-on course designed to teach Chrome extension development, covering essential concepts like manifest files, storage APIs, and content scripts.
+## Overview
+The **AI Chat Bot Assistance** Chrome extension enhances the problem-solving experience on [maang.in](https://maang.in) by integrating an AI-powered chatbot. It provides real-time AI assistance tailored to each coding problem, helping users understand concepts and find solutions more efficiently.
 
-With this extension, users can:  
-- Bookmark problems for later review.  
-- View and manage bookmarked problems directly from the extension.  
-- Learn key development concepts while building a practical tool.  
+## Features
+- **AI-Powered Assistance**: Get instant AI-generated guidance while solving problems on maang.in.
+- **Context-Aware Responses**: The AI understands the problem you are viewing and provides relevant suggestions.
+- **Seamless Integration**: An "AI Help" button is added to each problem page for quick access to the chatbot.
+- **User-Friendly Chatbox**: A sleek and intuitive chat interface allows smooth interaction with the AI.
+- **Lightweight & Efficient**: Designed to be fast and responsive without affecting website performance.
 
----
+## How It Works
+1. Install the Chrome extension from the Web Store (or load it manually in Developer Mode).
+2. Navigate to a problem page on maang.in.
+3. Click the **"AI Help"** button to open the chatbox.
+4. Interact with the AI to get hints, explanations, and problem-solving strategies.
 
-## Repository Structure  
+## Installation
+### From the Chrome Web Store (Upcoming)
+1. Visit the [Chrome Web Store](#) (link will be provided after publication).
+2. Click "Add to Chrome" and confirm installation.
 
-This repository contains the following folders:  
-
-1. **Starter Files**:  
-   This folder includes the base setup for the project, with the essential files to kickstart your development journey.  
-   Path: `Starter Files/`
-
-2. **Final Code**:  
-   This folder contains the complete and functional Chrome extension. You can refer to this for understanding the final implementation or troubleshooting issues.  
-   Path: `Final Code/`
-
----
-
-## Getting Started  
-
-### Prerequisites  
-- Basic knowledge of JavaScript, HTML, and CSS.  
-- A text editor (e.g., Visual Studio Code).  
-- Google Chrome browser for testing.
-
-### Installation  
-
-1. **Clone the Repository**  
-   ```bash
-   git clone https://github.com/Algozenith/chrome-ext-problem-tracker.git
-   cd chrome-ext-problem-tracker
+### Manual Installation (For Development & Testing)
+1. Clone this repository:
+   ```sh
+   git clone https://github.com/yourusername/AI-CHROME-EXTENSION.git
    ```
+2. Open **Chrome** and go to `chrome://extensions/`.
+3. Enable **Developer Mode** (toggle in the top-right corner).
+4. Click **Load Unpacked** and select the extension folder.
+5. The extension is now installed and ready to use.
 
-2. **Load the Extension in Chrome**  
-   - Open Chrome and go to `chrome://extensions/`.  
-   - Enable **Developer Mode** (toggle at the top-right).  
-   - Click on **Load unpacked** and select the `starter-files` or `final-code` folder.
+## Technologies Used
+- **JavaScript**: Core logic for AI interaction and Chrome extension behavior.
+- **HTML/CSS**: UI design for chatbox and buttons.
+- **AI API Integration**: Connects to an AI backend for intelligent responses.
+
+## Future Improvements
+- Improve AI response accuracy and contextual understanding.
+- Enhance UI for a better user experience.
+- Add voice-based AI interaction.
+
+## Contribution
+Contributions are welcome! Feel free to fork this repo, open issues, or submit pull requests.
+
 
 ---
+Elevate your coding experience with AI-powered problem-solving! 🚀
 
-## How to Use  
-
-1. Visit the [maang.in](https://maang.in) website.  
-2. Use the AZ Problem Tracker extension to bookmark problems.  
-3. Access your saved bookmarks from the extension popup.
-
----
-
-## Learn While Building  
-
-Follow along with the course to build this project step-by-step. You'll gain hands-on experience with:  
-- Chrome extension architecture.  
-- Interacting with web pages using content scripts.  
-- Saving data with Chrome's Storage API.  
-- Debugging and testing extensions.  
-
-Happy coding! 🚀
