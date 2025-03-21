@@ -1,38 +1,39 @@
 {
   "manifest_version": 3,
-  "name": "Your Chrome Extension Name",
+  "name": "AI Chat Bot Assistance for maang.in - Chrome Extension",
   "version": "0.1",
-  "author": "First Last",
-  "description": "A description about your Chrome Extension...",
+  "author": "Ankit",
+  "description": "The AI Chat Bot Assistance Chrome extension enhances the problem-solving experience on maang.in by integrating an AI-powered chatbot.",
   "permissions": [
-    ""
+    "storage",
+    "tabs",
+    "scripting", "activeTab"
   ],
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ]
+      "matches": ["https://maang.in/*"],
+      "js": [ "content.js"],
+      "css": ["styles.css"]
     }
   ],
   "background": {
     "service_worker": "background.js"
   },
-  "web_accessible_resources" : [
+  "web_accessible_resources": [
     {
-      "resources": [],
-      "matches" : ["<all_urls>"]
+      "resources": ["inject.js"],
+      "matches": [
+        "https://maang.in/*"
+      ]
     }
   ],
   "action": {
     "default_icon": {
-      "16": "logo.png",
-      "24": "logo.png",
-      "32": "logo.png"
+      "16": "assets/bookmark.png",
+      "24": "assets/bookmark.png",
+      "32": "assets/bookmark.png"
     },
-    "default_popup": "index.html",
-    "default_title": "A tooltip popup description when you hover over the Chrome Extension icon."
+    "default_popup": "popup.html",
+    "default_title": "AI Chat Bot Assistance"
   }
 }
