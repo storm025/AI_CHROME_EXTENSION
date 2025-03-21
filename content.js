@@ -333,5 +333,56 @@ function makeResizable(element) {
     });
 }
 
-observer.observe(document.body, { childList: true, subtree: true });
-window.addEventListener("load", insertAskAIButton);
+// Function to inject our script into the page
+function injectScript() {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('inject.js');
+    script.onload = function() {
+        this.remove();
+    };
+    (document.head || document.documentElement).appendChild(script);
+}
+
+// Inject our script
+injectScript();
+
+insertAskAIButton();
+
+// Listen for response from the injected script and print in the console.
+window.addEventListener('USER_CODE_FOUND', function(event) {
+    const userData = event.detail;
+    
+    console.log("Received user data:", userData);
+    if (userData.code) {
+        console.log("Problem ID:", userData.problemId);
+        console.log("Language:", userData.editorLanguage);
+        console.log("Code:", userData.code);
+        console.log("Found in key:", userData.matchedKey);
+        
+        // Store the code for use with your AI functionality
+        window.userCodeForAI = userData.code;
+    } else {
+        console.error("Could not find user code in localStorage");
+    }
+});
+
+// Listen for the injected script to announce it's loaded
+window.addEventListener('INJECT_SCRIPT_LOADED', function() {
+    // Request the user code
+    window.dispatchEvent(new CustomEvent('GET_USER_CODE'));
+});
+
+// Set up a URL change listener for client-side routing
+let lastUrl = location.href;
+new MutationObserver(() => {
+    if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        console.log("URL changed to:", lastUrl);
+        // URL changed, wait a bit for the page to update
+        setTimeout(() => {
+            // Request the new user code
+            window.dispatchEvent(new CustomEvent('GET_USER_CODE'));
+            insertAskAIButton();
+        }, 1000);
+    }
+}).observe(document, {subtree: true, childList: true});

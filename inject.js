@@ -1,70 +1,59 @@
 (function() {
-    const originalOpen = XMLHttpRequest.prototype.open;
-    
-    // Function to communicate problem details back to content script
-    function dispatchProblemDetails(problemId, details) {
-        document.dispatchEvent(new CustomEvent('problemDetailsIntercepted', {
-            detail: { problemId, details }
-        }));
-    }
-
-    XMLHttpRequest.prototype.open = function(method, url, async) {
-        // Check if the request URL matches the required endpoint
-        if (url.includes("api2.maang.in/problems/user/")) {
-            const problemId = url.split("/").pop();
-            console.log("🔍 Intercepting Problem Details API:", url);
-
-            this.addEventListener("load", function() {
-                if (this.status === 200) {
-                    try {
-                        const responseData = JSON.parse(this.responseText);
-                        console.log(`📌 Problem Details for ID ${problemId}:`, responseData);
-                        
-                        // Send data to content script
-                        dispatchProblemDetails(problemId, responseData);
-                        
-                        // Store in localStorage only if not already present
-                        const storageKey = `problem_${problemId}_details`;
-                        if (!localStorage.getItem(storageKey)) {
-                            localStorage.setItem(storageKey, JSON.stringify(responseData));
-                            console.log(`✅ Problem ${problemId} details saved.`);
-                        } else {
-                            console.log(`⚡ Problem ${problemId} details already exist.`);
-                        }
-                    } catch (error) {
-                        console.error("❌ Error processing problem details:", error);
-                    }
-                }
-            });
+    function getUserCodeFromPage() {
+        // Extract problem ID from URL
+        const urlParts = window.location.pathname.split("/");
+        const problemSlug = urlParts[urlParts.length - 1];
+        const problemId = problemSlug.split("-").pop();
+        
+        if (!problemId || isNaN(problemId)) {
+            console.log("Could not extract valid problem ID");
+            return;
         }
-
-        return originalOpen.apply(this, arguments);
-    };
-    
-    // Function to get user code using the specific key format
-    function getUserCode(problemId) {
-        // Get current language from localStorage
-        const language = localStorage.getItem("editorial-language") || "C++14";
         
-        // Build the key using the format you specified
-        const codeKey = `course_10672_${problemId}_${language}`;
+        const editorLanguage = localStorage.getItem("editor-language");
         
-        // Get the code
-        const code = localStorage.getItem(codeKey);
+        // Search for the user code in localStorage
+        let userCode = null;
+        let matchedKey = null;
         
-        // Send back to content script
-        document.dispatchEvent(new CustomEvent('userCodeFetched', {
+        for(let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if(key.includes("course_") && key.includes(problemId) && 
+               (editorLanguage ? key.includes(editorLanguage) : true)) {
+                matchedKey = key;
+                userCode = localStorage.getItem(key);
+                break;
+            }
+        }
+        
+        // If no exact match found, try a more relaxed approach
+        if (!userCode) {
+            for(let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if(key.includes("course_") && key.includes(problemId)) {
+                    matchedKey = key;
+                    userCode = localStorage.getItem(key);
+                    break;
+                }
+            }
+        }
+        
+        // Send the data to content script using a custom event
+        window.dispatchEvent(new CustomEvent('USER_CODE_FOUND', { 
             detail: {
-                problemId: problemId,
-                language: language,
-                code: code || "",
-                key: codeKey
+                problemId,
+                editorLanguage,
+                code: userCode,
+                matchedKey: matchedKey
             }
         }));
-        
-        return { code, language, key: codeKey };
     }
     
-    // Expose the function to be called from content script
-    window.getUserCode = getUserCode;
+    // Listen for requests from content script
+    window.addEventListener('GET_USER_CODE', function() {
+        getUserCodeFromPage();
+    });
+    
+    // Announce that the script is loaded
+    window.dispatchEvent(new CustomEvent('INJECT_SCRIPT_LOADED'));
 })();
