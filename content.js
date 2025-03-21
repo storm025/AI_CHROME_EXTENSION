@@ -383,6 +383,10 @@ new MutationObserver(() => {
             // Request the new user code
             window.dispatchEvent(new CustomEvent('GET_USER_CODE'));
             insertAskAIButton();
+            let chatbox = document.querySelector(".ask_ai_chatbox");
+            if (chatbox) {
+                toggleChatbox();
+            }
         }, 1000);
     }
 }).observe(document, {subtree: true, childList: true});
