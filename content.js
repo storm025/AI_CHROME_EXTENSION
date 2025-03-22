@@ -8,16 +8,54 @@ function insertAskAIButton() {
     askAIButton.innerText = "ASK A.I.";
     askAIButton.className = "ask_ai_button";
 
+    updateAskAIButtonTheme(askAIButton); // Set initial theme
+
     askAIButton.onclick = function () {
         toggleChatbox();
     };
 
     existingButton.parentNode.insertBefore(askAIButton, existingButton);
+
+    observeThemeToggle(askAIButton);  
 }
 
 const observer = new MutationObserver(() => {
     insertAskAIButton();
 });
+
+// Function to observe theme toggle button
+function observeThemeToggle(askAIButton) {
+    const themeToggleButton = document.querySelector(".ant-switch"); // Select the theme toggle button
+
+    if (!themeToggleButton) {
+        console.error("Theme toggle button not found");
+        return;
+    }
+
+    const themeObserver = new MutationObserver(() => {
+        updateAskAIButtonTheme(askAIButton);
+    });
+
+    themeObserver.observe(themeToggleButton, { attributes: true, attributeFilter: ["class"] });
+}
+
+function getThemeFromToggleButton() {
+    const themeToggleButton = document.querySelector(".ant-switch");
+    return themeToggleButton?.classList.contains("ant-switch-checked") ? "dark" : "light";
+}
+
+// Function to update the theme of the Ask A.I. button
+function updateAskAIButtonTheme(askAIButton) {
+    if (!askAIButton) return;
+
+    const theme = getThemeFromToggleButton();
+    console.log("Theme updated to:", theme);
+
+    askAIButton.style.backgroundColor = theme === "dark" ? "#2b384e" : "#fff";
+    askAIButton.style.color = theme === "dark" ? "white" : "#000";
+    askAIButton.style.border = theme === "dark" ? "1px solid #555" : "1px solid #ccc";
+}
+
 
 function toggleChatbox() {
     let chatbox = document.querySelector(".ask_ai_chatbox");
@@ -357,7 +395,6 @@ window.addEventListener('USER_CODE_FOUND', function(event) {
         console.log("Problem ID:", userData.problemId);
         console.log("Language:", userData.editorLanguage);
         console.log("Code:", userData.code);
-        console.log("Found in key:", userData.matchedKey);
         
         // Store the code for use with your AI functionality
         window.userCodeForAI = userData.code;

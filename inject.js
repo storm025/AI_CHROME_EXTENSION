@@ -14,13 +14,12 @@
         
         // Search for the user code in localStorage
         let userCode = null;
-        let matchedKey = null;
+
         
         for(let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if(key.includes("course_") && key.includes(problemId) && 
                (editorLanguage ? key.includes(editorLanguage) : true)) {
-                matchedKey = key;
                 userCode = localStorage.getItem(key);
                 break;
             }
@@ -31,7 +30,6 @@
             for(let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if(key.includes("course_") && key.includes(problemId)) {
-                    matchedKey = key;
                     userCode = localStorage.getItem(key);
                     break;
                 }
@@ -44,7 +42,6 @@
                 problemId,
                 editorLanguage,
                 code: userCode,
-                matchedKey: matchedKey
             }
         }));
     }
