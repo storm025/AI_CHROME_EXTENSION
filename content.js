@@ -8,35 +8,80 @@ function insertAskAIButton() {
     askAIButton.innerText = "ASK A.I.";
     askAIButton.className = "ask_ai_button";
 
-    updateAskAIButtonTheme(askAIButton); // Set initial theme
+    // Set initial theme and observe theme changes
+    updateAskAIButtonTheme(askAIButton);
+    
+    const themeToggleButton = document.querySelector(".ant-switch");
+    if (themeToggleButton) {
+        new MutationObserver(() => updateAskAIButtonTheme(askAIButton))
+            .observe(themeToggleButton, { attributes: true, attributeFilter: ["class"] });
+    }
 
     askAIButton.onclick = function () {
-        toggleChatbox();
+        chrome.storage.local.get("userApiKey", (data) => {
+            data.userApiKey ? toggleChatbox() : showApiKeyModal();
+        });
     };
 
     existingButton.parentNode.insertBefore(askAIButton, existingButton);
-
-    observeThemeToggle(askAIButton);  
 }
 
-const observer = new MutationObserver(() => {
-    insertAskAIButton();
-});
+const observer = new MutationObserver(insertAskAIButton);
 
-// Function to observe theme toggle button
-function observeThemeToggle(askAIButton) {
-    const themeToggleButton = document.querySelector(".ant-switch"); // Select the theme toggle button
-
-    if (!themeToggleButton) {
-        console.error("Theme toggle button not found");
+function showApiKeyModal() {
+    let modal = document.getElementById("apiKeyModal");
+    
+    if (modal) {
+        modal.style.display = "flex";
         return;
     }
 
-    const themeObserver = new MutationObserver(() => {
-        updateAskAIButtonTheme(askAIButton);
+    // Create Modal
+    modal = document.createElement("div");
+    modal.id = "apiKeyModal";
+    modal.className = "modal";
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Enter Your API Key</h2>
+            <input type="text" id="apiKeyInput" placeholder="Eg:sk-..." />
+            <button id="saveApiKeyBtn">Save</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Event listeners
+    document.querySelector(".modal-close").addEventListener("click", closeApiKeyModal);
+    document.getElementById("saveApiKeyBtn").addEventListener("click", saveApiKey);
+    modal.addEventListener("click", e => {
+        if (e.target === modal) closeApiKeyModal();
     });
 
-    themeObserver.observe(themeToggleButton, { attributes: true, attributeFilter: ["class"] });
+    modal.style.display = "flex";
+}
+
+function closeApiKeyModal() {
+    document.getElementById("apiKeyModal").style.display = "none";
+}
+
+function saveApiKey() {
+    const apiKey = document.getElementById("apiKeyInput").value.trim();
+    if (!apiKey) {
+        alert("Please enter a valid API Key.");
+        return;
+    }
+
+    chrome.storage.local.set({ userApiKey: apiKey }, () => {
+        alert("API Key Saved!");
+        closeApiKeyModal();
+    });
+}
+
+function getApiKey() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(["userApiKey"], result => resolve(result.userApiKey || null));
+    });
 }
 
 function getThemeFromToggleButton() {
@@ -44,18 +89,15 @@ function getThemeFromToggleButton() {
     return themeToggleButton?.classList.contains("ant-switch-checked") ? "dark" : "light";
 }
 
-// Function to update the theme of the Ask A.I. button
 function updateAskAIButtonTheme(askAIButton) {
     if (!askAIButton) return;
 
     const theme = getThemeFromToggleButton();
-    console.log("Theme updated to:", theme);
-
+    
     askAIButton.style.backgroundColor = theme === "dark" ? "#2b384e" : "#fff";
     askAIButton.style.color = theme === "dark" ? "white" : "#000";
     askAIButton.style.border = theme === "dark" ? "1px solid #555" : "1px solid #ccc";
 }
-
 
 function toggleChatbox() {
     let chatbox = document.querySelector(".ask_ai_chatbox");
@@ -106,21 +148,16 @@ function toggleChatbox() {
     makeDraggable(chatbox);
     makeResizable(chatbox);
 
+    // Event listeners
     chatbox.querySelector(".chatbox_close").addEventListener("click", () => {
         chatbox.remove();
         document.removeEventListener('mousedown', handleClickOutside);
     });
 
-    chatbox.querySelector(".chatbox_send").addEventListener("click", () => {
-        sendMessage();
+    chatbox.querySelector(".chatbox_send").addEventListener("click", sendMessage);
+    chatbox.querySelector(".chatbox_input").addEventListener("keypress", e => {
+        if (e.key === "Enter") sendMessage();
     });
-
-    chatbox.querySelector(".chatbox_input").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-            sendMessage();
-        }
-    });
-
     chatbox.querySelector(".chatbox_clear").addEventListener("click", clearChat);
 }
 
@@ -128,9 +165,7 @@ function handleClickOutside(event) {
     const chatbox = document.querySelector(".ask_ai_chatbox");
     if (!chatbox) return;
 
-    // Check if the click is outside the chatbox
-    if (!chatbox.contains(event.target) &&
-        !event.target.classList.contains('ask_ai_button')) {
+    if (!chatbox.contains(event.target) && !event.target.classList.contains('ask_ai_button')) {
         chatbox.remove();
         document.removeEventListener('mousedown', handleClickOutside);
     }
@@ -139,17 +174,22 @@ function handleClickOutside(event) {
 async function sendMessage() {
     const inputBox = document.querySelector(".chatbox_input");
     const message = inputBox.value.trim();
-
     if (message === "") return;
 
     const chatBody = document.querySelector(".chatbox_body");
+    const problemId = getProblemId();
+    if (!problemId) {
+        console.error("No problem ID found");
+        return;
+    }
 
-    // Add User Message to Chat
+    // Create user message
     const userMessage = document.createElement("div");
     userMessage.className = "chatbox_message user_message";
     userMessage.innerText = message;
     chatBody.appendChild(userMessage);
 
+    // Clear input and scroll
     inputBox.value = "";
     chatBody.scrollTop = chatBody.scrollHeight;
 
@@ -160,47 +200,137 @@ async function sendMessage() {
     chatBody.appendChild(loadingMessage);
     chatBody.scrollTop = chatBody.scrollHeight;
 
-    // Fetch AI Response
     try {
-        const aiResponse = await fetchAIResponse(message);
+        // Fetch problem data and user code
+        const problemData = JSON.stringify(await getProblemData());
+        const userCode = window.userCodeForAI || "No code found.";
+        let chatHistory= await getChatHistory(problemId) ;
 
-        loadingMessage.remove();
+        // console.log("Problem Data:", problemData);
+        console.log("User Code:", userCode);
 
-        const aiMessage = document.createElement("div");
-        aiMessage.className = "chatbox_message ai_message";
-        aiMessage.innerText = aiResponse;
-        chatBody.appendChild(aiMessage);
+        // Create chat manager instance
+        const chatManager = new InteractiveChatManager(await getApiKey());
 
-        chatBody.scrollTop = chatBody.scrollHeight;
-
-        saveChatHistory(); // Save chat history to local storage
-
+        // Fetch AI response
+        const aiResponse = await chatManager.fetchAIResponse(message, problemData, userCode,chatHistory);
+        
+        // Update loading message with AI response
+        loadingMessage.innerText = aiResponse;
+        
+        // Save chat history
+        saveChatHistory(problemId);
     } catch (error) {
-        loadingMessage.innerText = "Error fetching response!";
+        console.error("Send Message Error:", error);
+        loadingMessage.innerText = `Error: ${error.message || "Failed to fetch response"}`;
     }
 }
 
-// Response from the A.I
-async function fetchAIResponse(userMessage) {
-    const apiKey = "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"; 
+class InteractiveChatManager {
+    constructor(apiKey) {
+        this.apiKey = apiKey;
+    }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: userMessage }],
-        }),
-    });
+    // Sanitize input to prevent prompt injections
+    sanitizeInput(input) {
+        return input
+            .replace(/<script>.*?<\/script>/gi, '')
+            .replace(/javascript:/gi, '')
+            .replace(/[^\w\s.,?!-]/gi, '')
+            .slice(0, 1000);
+    }
 
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "No response from AI.";
+    // Generate context-specific system prompt
+    generateSystemPrompt(problemData, userCode,chatHistory) {
+        return `You are an AI assistant helping a user solve a coding problem.
+        Guidelines:
+        1. Only answer queries related to the following problem.
+        2. Use previous messages to improve the response.
+        3. If the user asks for an editorial solution, suggest hints first. Provide the solution only if explicitly requested.
+        4. Stay focused on the problem and avoid unrelated discussions.
+
+        **Problem Description:**
+        ${problemData}
+        
+        **User's Current Code:**
+        \n\n${userCode}\n\n
+        **Chat History for Context:**
+        ${chatHistory}
+        `;
+    }
+
+    // Enhanced AI response fetching
+    async fetchAIResponse(userMessage, problemData, userCode,chatHistory) {
+        const apiKey = await getApiKey();
+        if (!apiKey) throw new Error("API Key not found");
+
+        const sanitizedMessage = this.sanitizeInput(userMessage);
+
+        const messages = [
+            { 
+                "role": "system", 
+                "content": this.generateSystemPrompt(problemData, userCode,chatHistory)
+            },
+            { 
+                "role": "user", 
+                "content": sanitizedMessage 
+            }
+        ];
+
+        try {
+            console.log("messages: ",messages);
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({ 
+                    model: "gpt-4o-mini", 
+                    messages: messages,
+                    temperature: 0.7,
+                    frequency_penalty: 0.5,
+                    presence_penalty: 0.5
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.choices && data.choices.length > 0) {
+                return data.choices[0].message.content;
+            } else {
+                console.error("No response from AI", data);
+                return "Sorry, I couldn't generate a response. Please try again.";
+            }
+        } catch (error) {
+            console.error("AI Response Error:", error);
+            return `Error: ${error.message}`;
+        }
+    }
 }
 
-// Unique problem id of a problem
+//chatHistory for A.I
+async function getChatHistory(problemId) {
+    return new Promise((resolve) => {
+        chrome.storage.local.get([`chat_${problemId}`], (result) => {
+            const chatHistory = result[`chat_${problemId}`] || [];
+            resolve(chatHistory.map(({ text, sender }) => `${sender}: ${text}`).join("\n"));
+        });
+    });
+}
+
+async function getProblemData() {
+    return new Promise((resolve) => {
+        // Try multiple storage keys
+        chrome.storage.local.get(["problemData", "Body", "problem"], (data) => {
+            const problemDescription = data.problemData || data.Body || data.problem || "No problem description found.";
+            // console.log("Problem Data Retrieved:", problemDescription);
+            resolve(problemDescription);
+        });
+    });
+}
+
+
 function getProblemId() {
     const urlParts = window.location.pathname.split("/");
     const problemSlug = urlParts[urlParts.length - 1];
@@ -209,27 +339,38 @@ function getProblemId() {
     return isNaN(problemId) ? null : problemId;
 }
 
-// Save chat history to local storage
-function saveChatHistory() {
-    const problemId = getProblemId();
-    if (!problemId) return;
-
+function saveChatHistory(problemId) {
     const chatMessages = [...document.querySelectorAll(".chatbox_message")].map(msg => ({
         text: msg.innerText,
         sender: msg.classList.contains("user_message") ? "user" : "ai"
     }));
-
-    chrome.storage.local.set({ [problemId]: chatMessages });
+    
+    // Save chat history using the problem ID
+    chrome.storage.local.set({ [`chat_${problemId}`]: chatMessages }, () => {
+        console.log("Chat history saved for problem:", problemId);
+    });
 }
 
-// Load chat history
 function loadChatHistory() {
     const problemId = getProblemId();
-    if (!problemId) return;
+    if (!problemId) {
+        console.log("No problem ID found, cannot load chat history");
+        return;
+    }
 
-    chrome.storage.local.get([problemId], (result) => {
-        const chatHistory = result[problemId] || [];
+    // Use the chat history key with problem ID prefix
+    chrome.storage.local.get([`chat_${problemId}`], (result) => {
+        const chatHistory = result[`chat_${problemId}`] || [];
+        // console.log("Retrieved Chat History:", chatHistory);
+
         const chatBody = document.querySelector(".chatbox_body");
+        if (!chatBody) {
+            console.log("Chat body not found");
+            return;
+        }
+
+        // Clear existing messages before loading history
+        chatBody.innerHTML = '';
 
         chatHistory.forEach(({ text, sender }) => {
             const messageDiv = document.createElement("div");
@@ -242,7 +383,6 @@ function loadChatHistory() {
     });
 }
 
-// Clears chat history
 function clearChat() {
     if (!confirm("Are you sure you want to delete all chats? This action cannot be undone.")) return;
 
@@ -254,34 +394,26 @@ function clearChat() {
     }
 }
 
-// Make the chatbox draggable
 function makeDraggable(element) {
     const header = element.querySelector(".chatbox_header");
     let offsetX = 0, offsetY = 0, isDragging = false;
-    let initialRect = null;
 
     header.style.cursor = "move";
 
     header.addEventListener("mousedown", (e) => {
         if (e.target.closest(".chatbox_close")) return;
         isDragging = true;
-        initialRect = element.getBoundingClientRect();
-        offsetX = e.clientX - initialRect.left;
-        offsetY = e.clientY - initialRect.top;
+        const rect = element.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
         header.style.userSelect = "none";
     });
 
     document.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
 
-        let newX = e.clientX - offsetX;
-        let newY = e.clientY - offsetY;
-
-        const maxWidth = window.innerWidth - element.offsetWidth;
-        const maxHeight = window.innerHeight - element.offsetHeight;
-
-        newX = Math.max(0, Math.min(newX, maxWidth));
-        newY = Math.max(0, Math.min(newY, maxHeight));
+        const newX = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - element.offsetWidth));
+        const newY = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - element.offsetHeight));
 
         element.style.left = `${newX}px`;
         element.style.top = `${newY}px`;
@@ -295,7 +427,6 @@ function makeDraggable(element) {
     });
 }
 
-// Make the chatbox resizable
 function makeResizable(element) {
     const minWidth = 250;
     const minHeight = 300;
@@ -330,35 +461,29 @@ function makeResizable(element) {
 
         // Handle horizontal resizing
         if (handleClasses.contains('left') || handleClasses.contains('top-left') || handleClasses.contains('bottom-left')) {
-            newWidth = initialRect.width - deltaX;
+            newWidth = Math.max(minWidth, initialRect.width - deltaX);
             if (newWidth >= minWidth) {
                 newX = initialRect.left + deltaX;
             }
         } else if (handleClasses.contains('right') || handleClasses.contains('top-right') || handleClasses.contains('bottom-right')) {
-            newWidth = initialRect.width + deltaX;
+            newWidth = Math.max(minWidth, initialRect.width + deltaX);
         }
 
         // Handle vertical resizing
         if (handleClasses.contains('top') || handleClasses.contains('top-left') || handleClasses.contains('top-right')) {
-            newHeight = initialRect.height - deltaY;
+            newHeight = Math.max(minHeight, initialRect.height - deltaY);
             if (newHeight >= minHeight) {
                 newY = initialRect.top + deltaY;
             }
         } else if (handleClasses.contains('bottom') || handleClasses.contains('bottom-left') || handleClasses.contains('bottom-right')) {
-            newHeight = initialRect.height + deltaY;
+            newHeight = Math.max(minHeight, initialRect.height + deltaY);
         }
 
-        // Apply size constraints
-        if (newWidth >= minWidth) {
-            element.style.width = `${newWidth}px`;
-            element.style.left = `${newX}px`;
-        }
-        if (newHeight >= minHeight) {
-            element.style.height = `${newHeight}px`;
-            element.style.top = `${newY}px`;
-        }
-
-        // Reset right and bottom properties
+        // Apply changes
+        element.style.width = `${newWidth}px`;
+        element.style.height = `${newHeight}px`;
+        element.style.left = `${newX}px`;
+        element.style.top = `${newY}px`;
         element.style.right = 'auto';
         element.style.bottom = 'auto';
     });
@@ -371,7 +496,6 @@ function makeResizable(element) {
     });
 }
 
-// Function to inject our script into the page
 function injectScript() {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('inject.js');
@@ -381,49 +505,45 @@ function injectScript() {
     (document.head || document.documentElement).appendChild(script);
 }
 
-// Inject our script
+// Main initialization
 injectScript();
-
 insertAskAIButton();
 
-// Listen for response from the injected script and print in the console.
-window.addEventListener('USER_CODE_FOUND', function(event) {
-    const userData = event.detail;
-    
-    console.log("Received user data:", userData);
-    if (userData.code) {
-        console.log("Problem ID:", userData.problemId);
-        console.log("Language:", userData.editorLanguage);
-        console.log("Code:", userData.code);
-        
-        // Store the code for use with your AI functionality
-        window.userCodeForAI = userData.code;
-    } else {
-        console.error("Could not find user code in localStorage");
-    }
-});
-
-// Listen for the injected script to announce it's loaded
 window.addEventListener('INJECT_SCRIPT_LOADED', function() {
-    // Request the user code
     window.dispatchEvent(new CustomEvent('GET_USER_CODE'));
 });
 
-// Set up a URL change listener for client-side routing
+window.addEventListener("PROBLEM_DATA_FOUND", function (event) {
+    chrome.storage.local.set({ problemData: event.detail });
+});
+
+window.addEventListener("USER_CODE_UPDATED", function (event) {
+    const updatedCode = event.detail.code;
+    if (updatedCode) {
+        window.userCodeForAI = updatedCode;
+    }
+});
+
 let lastUrl = location.href;
+const problemContentObserver = new MutationObserver(() => {
+    const mainContent = document.querySelector(".coding_ask_doubt_button__FjwXJ");
+    if (mainContent) {
+        insertAskAIButton();
+    }
+});
+
 new MutationObserver(() => {
     if (location.href !== lastUrl) {
         lastUrl = location.href;
-        console.log("URL changed to:", lastUrl);
-        // URL changed, wait a bit for the page to update
         setTimeout(() => {
-            // Request the new user code
-            window.dispatchEvent(new CustomEvent('GET_USER_CODE'));
             insertAskAIButton();
-            let chatbox = document.querySelector(".ask_ai_chatbox");
+            const chatbox = document.querySelector(".ask_ai_chatbox");
             if (chatbox) {
                 toggleChatbox();
             }
+            problemContentObserver.observe(document.body, { subtree: true, childList: true });
         }, 1000);
     }
-}).observe(document, {subtree: true, childList: true});
+}).observe(document, { subtree: true, childList: true});
+
+problemContentObserver.observe(document.body, { subtree: true, childList: true });
