@@ -100,6 +100,86 @@
     }
 }
 
+.chatbox_download {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.chatbox_download svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+    transition: 0.2s ease-in-out;
+}
+
+.chatbox_download:hover svg {
+    fill: #192219; /* Green on hover */
+    transform: scale(1.1);
+}
+
+.voice_input {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.voice_input svg {
+    width: 24px;
+    height: 24px;
+    fill: rgba(2, 12, 22, 0.567);
+    transition: transform 0.2s ease-in-out;
+}
+
+.voice_input:hover svg {
+    fill: #0f53628b; 
+    transform: scale(1.1);
+}
+
+.chatbox_send, .ai_speaker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; 
+    height: 40px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    opacity: 1; 
+    transition: opacity 0.3s ease-in-out;
+}
+
+.chatbox_send svg, .ai_speaker svg {
+    width: 24px;
+    height: 24px;
+    fill: rgb(17, 15, 15); 
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Add hover effect */
+.chatbox_send:hover svg, .ai_speaker:hover svg {
+    fill: #086c0b;
+    transform: scale(1.1);
+}
+
+/* Ensure AI speaker button is visible */
+.chatbox_message.ai_message .ai_speaker {
+    display: inline-flex;
+    margin-left: 10px;
+}
+
+/* Ensure visibility even if CSS animations hide elements */
+.chatbox_send.hidden, .ai_speaker.hidden {
+    opacity: 1 !important; 
+    display: inline-flex !important;
+}
+
 
 .ask_ai_chatbox {
     position: fixed;

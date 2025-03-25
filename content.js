@@ -10,7 +10,7 @@ function insertAskAIButton() {
 
     // Set initial theme and observe theme changes
     updateAskAIButtonTheme(askAIButton);
-    
+
     const themeToggleButton = document.querySelector(".ant-switch");
     if (themeToggleButton) {
         new MutationObserver(() => updateAskAIButtonTheme(askAIButton))
@@ -30,7 +30,7 @@ const observer = new MutationObserver(insertAskAIButton);
 
 function showApiKeyModal() {
     let modal = document.getElementById("apiKeyModal");
-    
+
     if (modal) {
         modal.style.display = "flex";
         return;
@@ -93,7 +93,7 @@ function updateAskAIButtonTheme(askAIButton) {
     if (!askAIButton) return;
 
     const theme = getThemeFromToggleButton();
-    
+
     askAIButton.style.backgroundColor = theme === "dark" ? "#2b384e" : "#fff";
     askAIButton.style.color = theme === "dark" ? "white" : "#000";
     askAIButton.style.border = theme === "dark" ? "1px solid #555" : "1px solid #ccc";
@@ -116,7 +116,7 @@ function toggleChatbox() {
     chatbox.style.right = '20px';
     chatbox.style.bottom = '20px';
 
-    chatbox.innerHTML = 
+    chatbox.innerHTML =
         `<div class="resize-handle top-left"></div>
         <div class="resize-handle top"></div>
         <div class="resize-handle top-right"></div>
@@ -128,27 +128,65 @@ function toggleChatbox() {
         <div class="chatbox_header">
             <span>AI Chat</span>
             <div class="button-container">
+                <button class="chatbox_download">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3V16M12 16L8 12M12 16L16 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M5 19H19" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
                 <button class="chatbox_clear">🗑 Clear</button>
                 <button class="chatbox_close">&times;</button>
             </div>
         </div>
         <div class="chatbox_body"></div>
         <div class="chatbox_footer">
-            <input type="text" class="chatbox_input" placeholder="Type your message...">
-            <button class="chatbox_send">Send</button>
+          <button class="voice_input">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 16C14.2091 16 16 14.2091 16 12V6C16 3.79086 14.2091 2 12 2C9.79086 2 8 3.79086 8 6V12C8 14.2091 9.79086 16 12 16Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 12V10C4 9.44772 4.44772 9 5 9C5.55228 9 6 9.44772 6 10V12C6 15.3137 8.68629 18 12 18C15.3137 18 18 15.3137 18 12V10C18 9.44772 18.4477 9 19 9C19.5523 9 20 9.44772 20 10V12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 22V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+
+
+
+        <input type="text" class="chatbox_input" placeholder="Type your message...">
+
+            <button class="chatbox_send">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" stroke="white" stroke-width="2"/>
+                </svg>
+            </button>
         </div>`;
+
 
     document.body.appendChild(chatbox);
 
     loadChatHistory(); // Load chat history from local storage
-
-    // Add click outside listener
-    document.addEventListener('mousedown', handleClickOutside);
-
     makeDraggable(chatbox);
     makeResizable(chatbox);
 
+
     // Event listeners
+
+    document.querySelector(".voice_input").addEventListener("click", function() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = "en-US"; 
+        recognition.start();
+    
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript; 
+            document.querySelector(".chatbox_input").value = transcript;
+        };
+    
+        recognition.onerror = function(event) {
+            console.error("Speech recognition error:", event.error);
+        };
+    });
+    
+    chatbox.querySelector(".chatbox_download").addEventListener("click", downloadChat);
+    document.addEventListener('mousedown', handleClickOutside);
+
     chatbox.querySelector(".chatbox_close").addEventListener("click", () => {
         chatbox.remove();
         document.removeEventListener('mousedown', handleClickOutside);
@@ -160,6 +198,15 @@ function toggleChatbox() {
     });
     chatbox.querySelector(".chatbox_clear").addEventListener("click", clearChat);
 }
+
+// text to speech conversion
+function speakText(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 1; 
+    speechSynthesis.speak(utterance);
+}
+
 
 function handleClickOutside(event) {
     const chatbox = document.querySelector(".ask_ai_chatbox");
@@ -189,7 +236,7 @@ async function sendMessage() {
     userMessage.innerText = message;
     chatBody.appendChild(userMessage);
 
-    // Clear input and scroll
+
     inputBox.value = "";
     chatBody.scrollTop = chatBody.scrollHeight;
 
@@ -204,20 +251,33 @@ async function sendMessage() {
         // Fetch problem data and user code
         const problemData = JSON.stringify(await getProblemData());
         const userCode = window.userCodeForAI || "No code found.";
-        let chatHistory= await getChatHistory(problemId) ;
+        let chatHistory = await getChatHistory(problemId);
 
         // console.log("Problem Data:", problemData);
-        console.log("User Code:", userCode);
+        // console.log("User Code:", userCode);
 
         // Create chat manager instance
         const chatManager = new InteractiveChatManager(await getApiKey());
 
         // Fetch AI response
-        const aiResponse = await chatManager.fetchAIResponse(message, problemData, userCode,chatHistory);
-        
+        const aiResponse = await chatManager.fetchAIResponse(message, problemData, userCode, chatHistory);
+
         // Update loading message with AI response
-        loadingMessage.innerText = aiResponse;
-        
+        loadingMessage.innerHTML = `
+        <p>${aiResponse}</p>
+        <button class="ai_speaker">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 9V15H7L12 20V4L7 9H3Z" stroke="white" stroke-width="2"/>
+                <path d="M16.5 7.5C17.91 8.91 18.75 10.86 18.75 13C18.75 15.14 17.91 17.09 16.5 18.5" stroke="white" stroke-width="2"/>
+                <path d="M19.5 4.5C21.83 6.83 23.25 9.79 23.25 13C23.25 16.21 21.83 19.17 19.5 21.5" stroke="white" stroke-width="2"/>
+            </svg>
+        </button>
+    `;;
+    
+    loadingMessage.querySelector(".ai_speaker").addEventListener("click", function() {
+        speakText(aiResponse);
+    });
+
         // Save chat history
         saveChatHistory(problemId);
     } catch (error) {
@@ -241,13 +301,15 @@ class InteractiveChatManager {
     }
 
     // Generate context-specific system prompt
-    generateSystemPrompt(problemData, userCode,chatHistory) {
+    generateSystemPrompt(problemData, userCode, chatHistory) {
         return `You are an AI assistant helping a user solve a coding problem.
         Guidelines:
         1. Only answer queries related to the following problem.
         2. Use previous messages to improve the response.
         3. If the user asks for an editorial solution, suggest hints first. Provide the solution only if explicitly requested.
         4. Stay focused on the problem and avoid unrelated discussions.
+        5. Act as nice mentor which helps the user to solve the problem.
+        6. Don't provide solutions , hints, editorial code directly, Provide this things only if explicitly requested.
 
         **Problem Description:**
         ${problemData}
@@ -260,33 +322,33 @@ class InteractiveChatManager {
     }
 
     // Enhanced AI response fetching
-    async fetchAIResponse(userMessage, problemData, userCode,chatHistory) {
+    async fetchAIResponse(userMessage, problemData, userCode, chatHistory) {
         const apiKey = await getApiKey();
         if (!apiKey) throw new Error("API Key not found");
 
         const sanitizedMessage = this.sanitizeInput(userMessage);
 
         const messages = [
-            { 
-                "role": "system", 
-                "content": this.generateSystemPrompt(problemData, userCode,chatHistory)
+            {
+                "role": "system",
+                "content": this.generateSystemPrompt(problemData, userCode, chatHistory)
             },
-            { 
-                "role": "user", 
-                "content": sanitizedMessage 
+            {
+                "role": "user",
+                "content": sanitizedMessage
             }
         ];
 
         try {
-            console.log("messages: ",messages);
+            console.log("messages: ", messages);
             const response = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${apiKey}`,
                 },
-                body: JSON.stringify({ 
-                    model: "gpt-4o-mini", 
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
                     messages: messages,
                     temperature: 0.7,
                     frequency_penalty: 0.5,
@@ -295,7 +357,7 @@ class InteractiveChatManager {
             });
 
             const data = await response.json();
-            
+
             if (data.choices && data.choices.length > 0) {
                 return data.choices[0].message.content;
             } else {
@@ -344,7 +406,7 @@ function saveChatHistory(problemId) {
         text: msg.innerText,
         sender: msg.classList.contains("user_message") ? "user" : "ai"
     }));
-    
+
     // Save chat history using the problem ID
     chrome.storage.local.set({ [`chat_${problemId}`]: chatMessages }, () => {
         console.log("Chat history saved for problem:", problemId);
@@ -393,6 +455,33 @@ function clearChat() {
         chrome.storage.local.remove(problemId);
     }
 }
+
+
+
+// Download the Chat in localMachine
+function downloadChat() {
+    const chatMessages = [...document.querySelectorAll(".chatbox_message")];
+
+    if (chatMessages.length === 0) {
+        alert("No chat history to download.");
+        return;
+    }
+
+    let chatText = "Chat History:\n\n";
+    chatMessages.forEach(msg => {
+        const sender = msg.classList.contains("user_message") ? "User" : "AI";
+        chatText += `${sender}: ${msg.innerText}\n`;
+    });
+
+    const blob = new Blob([chatText], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "AI_Chat_History.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
 
 function makeDraggable(element) {
     const header = element.querySelector(".chatbox_header");
@@ -499,7 +588,7 @@ function makeResizable(element) {
 function injectScript() {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('inject.js');
-    script.onload = function() {
+    script.onload = function () {
         this.remove();
     };
     (document.head || document.documentElement).appendChild(script);
@@ -509,7 +598,7 @@ function injectScript() {
 injectScript();
 insertAskAIButton();
 
-window.addEventListener('INJECT_SCRIPT_LOADED', function() {
+window.addEventListener('INJECT_SCRIPT_LOADED', function () {
     window.dispatchEvent(new CustomEvent('GET_USER_CODE'));
 });
 
@@ -544,6 +633,6 @@ new MutationObserver(() => {
             problemContentObserver.observe(document.body, { subtree: true, childList: true });
         }, 1000);
     }
-}).observe(document, { subtree: true, childList: true});
+}).observe(document, { subtree: true, childList: true });
 
 problemContentObserver.observe(document.body, { subtree: true, childList: true });
