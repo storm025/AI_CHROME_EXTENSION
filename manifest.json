@@ -12,7 +12,7 @@
   "content_scripts": [
     {
       "matches": ["https://maang.in/*"],
-      "js": [ "content.js"],
+      "js": [ "marked.min.js","content.js"],
       "css": ["styles.css"]
     }
   ],
@@ -21,7 +21,10 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["inject.js"],
+      "resources": [
+        "inject.js",
+        "assets/maximize.png"
+      ],
       "matches": [
         "https://maang.in/*"
       ]

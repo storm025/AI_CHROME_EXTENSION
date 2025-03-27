@@ -5,8 +5,9 @@ function insertAskAIButton() {
     }
 
     const askAIButton = document.createElement("button");
-    askAIButton.innerText = "ASK A.I.";
+    askAIButton.innerText="ASK A.I.";
     askAIButton.className = "ask_ai_button";
+
 
     // Set initial theme and observe theme changes
     updateAskAIButtonTheme(askAIButton);
@@ -111,7 +112,7 @@ function toggleChatbox() {
     chatbox.className = "ask_ai_chatbox";
 
     // Set initial position and size
-    chatbox.style.width = '300px';
+    chatbox.style.width = '350px';
     chatbox.style.height = '400px';
     chatbox.style.right = '20px';
     chatbox.style.bottom = '20px';
@@ -129,12 +130,17 @@ function toggleChatbox() {
             <span>AI Chat</span>
             <div class="button-container">
                 <button class="chatbox_download">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 3V16M12 16L8 12M12 16L16 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M5 19H19" stroke="white" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </button>
-                <button class="chatbox_clear">🗑 Clear</button>
+                <button class="chatbox_clear">🗑</button>
+                <button class="chatbox-maximize">
+                    <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="8" height="8" fill="none" stroke="white" stroke-width="1"/>
+                    </svg>
+                </button>
                 <button class="chatbox_close">&times;</button>
             </div>
         </div>
@@ -146,8 +152,7 @@ function toggleChatbox() {
                 <path d="M4 12V10C4 9.44772 4.44772 9 5 9C5.55228 9 6 9.44772 6 10V12C6 15.3137 8.68629 18 12 18C15.3137 18 18 15.3137 18 12V10C18 9.44772 18.4477 9 19 9C19.5523 9 20 9.44772 20 10V12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M12 22V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-        </button>
-
+           </button>
 
 
         <input type="text" class="chatbox_input" placeholder="Type your message...">
@@ -168,13 +173,13 @@ function toggleChatbox() {
 
 
     // Event listeners
-    document.querySelector(".voice_input").addEventListener("click", function() {
+    document.querySelector(".voice_input").addEventListener("click", function () {
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = "en-US"; 
+        recognition.lang = "en-US";
         recognition.start();
-    
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript.trim().toLowerCase(); 
+
+        recognition.onresult = function (event) {
+            const transcript = event.results[0][0].transcript.trim().toLowerCase();
             document.querySelector(".chatbox_input").value = transcript;
 
             if (transcript === "stop" || transcript === "exit") {
@@ -182,11 +187,37 @@ function toggleChatbox() {
                 document.querySelector(".chatbox_input").value = "";
             }
         };
-    
-        recognition.onerror = function(event) {
+        
+        recognition.onerror = function (event) {
             console.error("Speech recognition error:", event.error);
         };
     });
+
+    document.querySelector(".chatbox-maximize").addEventListener("click", function () {
+        const chatbox = document.querySelector(".ask_ai_chatbox");
+        const maximizeIcon = this.querySelector("svg");
+    
+        if (chatbox.classList.contains("maximized")) {
+            chatbox.classList.remove("maximized");
+            chatbox.style.width = "350px";
+            chatbox.style.height = "400px";
+    
+            // Change to maximize icon
+            maximizeIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="8" height="8" fill="none" stroke="white" stroke-width="1"/>
+                    </svg>`;
+        } else {
+            chatbox.classList.add("maximized");
+            chatbox.style.width = "90vw";
+            chatbox.style.height = "90vh";
+    
+            // Change to minimize icon
+            maximizeIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="8" width="12" height="1" fill="white"/>
+                </svg>`;
+        }
+    });
+    
 
     chatbox.querySelector(".chatbox_download").addEventListener("click", downloadChat);
     document.addEventListener('mousedown', handleClickOutside);
@@ -219,7 +250,7 @@ function speakText(text) {
     }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
-    utterance.rate = 1; 
+    utterance.rate = 1;
     speechSynthesis.speak(utterance);
 }
 
@@ -285,9 +316,10 @@ async function sendMessage() {
         // Fetch AI response
         const aiResponse = await chatManager.fetchAIResponse(message, problemData, userCode, chatHistory);
 
+        let formattedResponse = formatAIResponse(aiResponse);
         // Update loading message with AI response
         loadingMessage.innerHTML = `
-        <p>${aiResponse}</p>
+        <p>${formattedResponse}</p>
         <button class="ai_speaker">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 9V15H7L12 20V4L7 9H3Z" stroke="white" stroke-width="2"/>
@@ -296,10 +328,10 @@ async function sendMessage() {
             </svg>
         </button>
     `;;
-    
-    loadingMessage.querySelector(".ai_speaker").addEventListener("click", function() {
-        speakText(aiResponse);
-    });
+
+        loadingMessage.querySelector(".ai_speaker").addEventListener("click", function () {
+            speakText(aiResponse);
+        });
 
         // Save chat history
         saveChatHistory(problemId);
@@ -307,6 +339,12 @@ async function sendMessage() {
         console.error("Send Message Error:", error);
         loadingMessage.innerText = `Error: ${error.message || "Failed to fetch response"}`;
     }
+}
+
+// Function to format AI response (Markdown + LaTeX)
+function formatAIResponse(rawText) {
+    let formattedResponse = marked.parse(rawText);
+    return formattedResponse;
 }
 
 class InteractiveChatManager {
@@ -325,7 +363,7 @@ class InteractiveChatManager {
 
     // Generate context-specific system prompt
     generateSystemPrompt(problemData, userCode, chatHistory) {
-        return `You are an AI assistant helping a user solve a coding problem.
+        return `You are an AI assistant helping a user solve the problem ${problemData.title}.
         Guidelines:
         1. Only answer queries related to the following problem.
         2. Use previous messages to improve the response.
@@ -470,15 +508,12 @@ function loadChatHistory() {
 
 function clearChat() {
     if (!confirm("Are you sure you want to delete all chats? This action cannot be undone.")) return;
-
     document.querySelector(".chatbox_body").innerHTML = "";
-
     const problemId = getProblemId();
     if (problemId) {
-        chrome.storage.local.remove(problemId);
+        chrome.storage.local.remove(`chat_${problemId}`);
     }
 }
-
 
 
 // Download the Chat in localMachine

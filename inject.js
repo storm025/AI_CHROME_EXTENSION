@@ -66,6 +66,8 @@
                             constraints: response.data.constraints || "Unknown",
                             hints: response.data.hints || [],
                             editorial_code: response.data.editorial_code || null,
+                            title: response.data.title,
+                            time_limit: response.data.time_limit_sec || "Unknown",
                         };
 
                         window.dispatchEvent(new CustomEvent("PROBLEM_DATA_FOUND", { 
