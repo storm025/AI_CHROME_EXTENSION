@@ -168,22 +168,26 @@ function toggleChatbox() {
 
 
     // Event listeners
-
     document.querySelector(".voice_input").addEventListener("click", function() {
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = "en-US"; 
         recognition.start();
     
         recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript; 
+            const transcript = event.results[0][0].transcript.trim().toLowerCase(); 
             document.querySelector(".chatbox_input").value = transcript;
+
+            if (transcript === "stop" || transcript === "exit") {
+                stopSpeech();
+                document.querySelector(".chatbox_input").value = "";
+            }
         };
     
         recognition.onerror = function(event) {
             console.error("Speech recognition error:", event.error);
         };
     });
-    
+
     chatbox.querySelector(".chatbox_download").addEventListener("click", downloadChat);
     document.addEventListener('mousedown', handleClickOutside);
 
@@ -192,15 +196,27 @@ function toggleChatbox() {
         document.removeEventListener('mousedown', handleClickOutside);
     });
 
-    chatbox.querySelector(".chatbox_send").addEventListener("click", sendMessage);
+    document.querySelector(".chatbox_send").addEventListener("click", sendMessage);
+
     chatbox.querySelector(".chatbox_input").addEventListener("keypress", e => {
         if (e.key === "Enter") sendMessage();
     });
     chatbox.querySelector(".chatbox_clear").addEventListener("click", clearChat);
 }
 
+// Function to stop AI speech
+function stopSpeech() {
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
+        console.log("Speech stopped");
+    }
+}
+
 // text to speech conversion
 function speakText(text) {
+    if (speechSynthesis.speaking) {
+        stopSpeech();
+    }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     utterance.rate = 1; 
@@ -221,6 +237,13 @@ function handleClickOutside(event) {
 async function sendMessage() {
     const inputBox = document.querySelector(".chatbox_input");
     const message = inputBox.value.trim();
+
+    if (message === "stop" || message === "exit") {
+        stopSpeech();
+        inputBox.value = "";
+        return;
+    }
+
     if (message === "") return;
 
     const chatBody = document.querySelector(".chatbox_body");
